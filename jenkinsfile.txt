@@ -1,0 +1,90 @@
+import groovy.io.FileType
+
+
+pipeline {
+    agent { label "master"}
+    
+    stages {
+        stage('Build') {
+            steps {
+                script {
+                    //echo "working space is ${workspace}"
+                  def  workspace = "${workspace}"
+                  //echo "new"+workspace
+                    def Arr = ["1", "2", "3"] as String[]
+                    
+                def logdir = 'C:/Windows/System32/config/systemprofile/AppData/Local/Jenkins.jenkins/jobs/Pipeline_Project/logs'
+                def files = new java.io.File(logdir).listFiles()
+                for(File file: files) 
+                if (!file.isDirectory()) 
+                    file.delete();
+                    
+                    
+                  for (int i =0; i<Arr.length;i++){ 
+                    def tests = [:]
+                    for (f in findFiles(glob: '**/bat_file/'+Arr[i]+'/*.bat')) {
+                        def temp_name = f
+                        
+                        //log snippet
+                        def name = temp_name.toString()
+                        String [] str 
+                       String [] logname
+                        str =name.split('\\\\',3)
+                        logname = str[2].split('[.]',0)
+                        
+                        
+                        tests["${temp_name}"]={
+                            node {
+                                stage(Arr[i]) {
+                                          bat  "C:/Windows/System32/config/systemprofile/AppData/Local/Jenkins.jenkins/jobs/Pipeline_Project/"+"${temp_name} > C:/Windows/System32/config/systemprofile/AppData/Local/Jenkins.jenkins/jobs/Pipeline_Project/logs/"+logname[0]+".txt" 
+                                }
+                               
+                                }
+                            }
+                        }
+                        parallel tests  
+                        
+                if (i==0){
+                double Error_rate = function();
+                 if (Error_rate <=100.0){
+                   error "Build failure"
+               }
+               else{
+                   println("Good to go!")
+               }
+                            
+                        }
+           
+            
+                    }
+                
+                    
+                
+            }
+        }       
+    }
+}
+}
+
+@NonCPS
+ def function(){
+ 
+             def logdir = 'C:/Windows/System32/config/systemprofile/AppData/Local/Jenkins.jenkins/jobs/Pipeline_Project/logs'
+             def files = new java.io.File(logdir).listFiles()
+             def Error_Percent=0.0
+               if (files.length >0){
+                 def val= []
+              new File(logdir).eachFile(FileType.FILES) { file ->
+                 val = file.filterLine  { it.contains('Err: ')}
+                  String str = val.toString()
+                  if (str.contains('Err:')){
+                     String Err= str.substring(str.indexOf("(")+1,str.indexOf("%"));
+                     double result = Err.toDouble()
+                      Error_Percent = Error_Percent+result
+                 }
+                }
+				}
+				 return Error_Percent
+
+ }
+
