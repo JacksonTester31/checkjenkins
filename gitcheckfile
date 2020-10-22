@@ -1,0 +1,94 @@
+import groovy.io.FileType
+
+pipeline {
+    agent { label "master"}
+    stages {
+        stage('Build') {
+            steps {
+                script {
+				//To know the workspace
+                  echo "working space is ${workspace}"
+				//To get the name& size of Subfolders from the directory  
+				     def list=[]
+                    def mydir = "${baseproject}bat_file"
+					dir(mydir) {
+                    def files = findFiles() 
+                files.each{ f -> 
+                    if(f.directory) {
+                   // echo "This is directory: ${f.name} "
+                list.add(f.name)
+      }
+   }
+   println "No of subfolders: "+list.size()
+ }
+                //clear log directory
+				def logdir = "${logdir}"
+                def files = new java.io.File(logdir).listFiles()
+                for(File file: files) 
+                if (!file.isDirectory()) 
+                    file.delete();
+ 
+ 
+				  //To run bat files in the subfolders
+                  for (int i =0; i<list.size();i++){   
+                    def tests = [:]
+                    for (f in findFiles(glob: '**/bat_file/'+list[i]+'/*.bat')) {
+                        def temp_name = f
+						
+						//log snippet
+                        def name = temp_name.toString()
+                        String [] str 
+                        String [] logname
+                        str =name.split('\\\\',3)
+                        logname = str[2].split('[.]',0)
+						
+                        tests["${temp_name}"]={
+                            node {
+                                stage(list[i]) {
+                                   bat  "${baseproject}"+"${temp_name} > ${logdir}/"+logname[0]+".txt"
+                                }
+                            }
+                        }
+                    }
+                    parallel tests
+					
+			if (i==0){
+			    double Errorcheck = "${errorcheck}".toDouble()
+                double Error_rate = function();
+                if (Error_rate >=Errorcheck){
+                  error "Build failure"
+                }
+               else{
+                   println("Good to go!")
+                }
+                            
+                        }
+					
+                }
+            }
+        }       
+    }
+}
+}
+
+@NonCPS
+ def function(){
+ 
+			 def logdir = "${logdir}"
+             def files = new java.io.File(logdir).listFiles()
+             def Error_Percent=0.0
+               if (files.length >0){
+                 def val= []
+              new File(logdir).eachFile(FileType.FILES) { file ->
+                 val = file.filterLine  { it.contains('Err: ')}
+                  String str = val.toString()
+                  if (str.contains('Err:')){
+                     String Err= str.substring(str.indexOf("(")+1,str.indexOf("%"));
+                     double result = Err.toDouble()
+                      Error_Percent = Error_Percent+result
+                 }
+                }
+				}
+				 return Error_Percent
+
+ }
