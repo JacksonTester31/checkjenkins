@@ -32,7 +32,7 @@ pipeline {
 				  //To run bat files in the subfolders
                   for (int i =0; i<list.size();i++){   
                     def tests = [:]
-                    for (f in findFiles(glob: '**/bat_file/'+list[i]+'/*.bat')) {
+                    for (f in findFiles(glob: '${baseproject}bat_file/'+list[i]+'/*.bat')) {
                         def temp_name = f
 						
 						//log snippet
